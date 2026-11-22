@@ -1,5 +1,6 @@
 #include "core/resp.h"
 
+#include <cctype>
 #include <sstream>
 
 namespace core {
@@ -91,6 +92,39 @@ static std::pair<RespValue, size_t> readArray(const std::string& data, size_t of
     return {v, pos - offset};
 }
 
+// Inline commands are the fallback format Redis (and redis-benchmark's
+// PING_INLINE test) use for plain text: a line of whitespace-separated
+// tokens terminated by '\n' (optionally preceded by '\r'), with none of the
+// '+','-',':','$','*' type prefixes. Throws if the line isn't complete yet,
+// so an incomplete inline command never gets mistaken for a parsed value.
+static std::pair<RespValue, size_t> readInlineCommand(const std::string& data, size_t offset) {
+    size_t nl = data.find('\n', offset);
+    if (nl == std::string::npos) {
+        throw std::runtime_error("incomplete inline command");
+    }
+
+    size_t end = nl;
+    if (end > offset && data[end - 1] == '\r') end--;
+
+    RespValue v;
+    v.type = RespValue::Type::Array;
+
+    size_t i = offset;
+    while (i < end) {
+        while (i < end && std::isspace(static_cast<unsigned char>(data[i]))) i++;
+        size_t start = i;
+        while (i < end && !std::isspace(static_cast<unsigned char>(data[i]))) i++;
+        if (i > start) {
+            RespValue tok;
+            tok.type = RespValue::Type::String;
+            tok.str = data.substr(start, i - start);
+            v.arr.push_back(std::move(tok));
+        }
+    }
+
+    return {v, (nl - offset) + 1};
+}
+
 std::pair<RespValue, size_t> decodeOne(const std::string& data, size_t offset) {
     if (offset >= data.size()) {
         throw std::runtime_error("No data");
@@ -107,9 +141,9 @@ std::pair<RespValue, size_t> decodeOne(const std::string& data, size_t offset) {
             return readBulkString(data, offset);
         case '*':
             return readArray(data, offset);
+        default:
+            return readInlineCommand(data, offset);
     }
-
-    return {RespValue{}, 0};
 }
 
 std::vector<RespValue> decode(const std::string& data) {

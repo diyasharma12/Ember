@@ -217,7 +217,7 @@ void EvalAndRespond(const BedisCmds& cmds, IComm& c) {
         } else if (cmd.Cmd == "INFO") {
             buf << evalINFO();
         } else {
-            buf << evalPING(cmd.Args);
+            buf << encodeError("ERR unknown command '" + cmd.Cmd + "'");
         }
     }
 
