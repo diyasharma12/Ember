@@ -1,4 +1,4 @@
-# MemKV
+# Ember
 
 A Redis-compatible in-memory key-value store written from scratch in C++17 — a single-threaded,
 `poll()`-based TCP server, a hand-written RESP protocol parser, TTL key expiry, approximate LRU
@@ -15,9 +15,7 @@ event loop stays fast, how a wire protocol gets parsed byte by byte, and why Red
 specific trade-offs it does (approximate LRU instead of true LRU, `fork()` instead of a lock,
 sampling instead of scanning). It's built on what I learned from a Go tutorial series and the book
 *Build Your Own Redis with C/C++*, ported to C++ with a number of real bugs from that reference
-implementation found and fixed along the way — see
-[`docs/MemKV-Field-Manual.html`](docs/MemKV-Field-Manual.html) for the full write-up, including the
-bugs, the design reasoning, and real `redis-benchmark` numbers.
+implementation found and fixed along the way.
 
 ## Architecture
 
@@ -98,7 +96,7 @@ another command.
 
 - **Approximate LRU, not true LRU.** A true LRU (hashmap + doubly linked list) is O(1) per access,
   but it costs two extra pointers per key and turns every `GET` into a pointer-relinking write.
-  MemKV instead tracks a coarse access clock per key, samples a handful of candidates into a small
+  Ember instead tracks a coarse access clock per key, samples a handful of candidates into a small
   fixed-size eviction pool, and evicts from that — the same trade-off real Redis makes, and for the
   same reasons.
 - **Expiry by sampling, not scanning.** An active sweep samples 20 keys with a TTL at a time,
@@ -148,6 +146,4 @@ methodology and caveats are in the field manual.
 ## Credits
 
 Learned Redis's internals from a Go tutorial series on YouTube and the book *Build Your Own Redis
-with C/C++*, then rebuilt it from scratch in C++. See
-[`docs/MemKV-Field-Manual.html`](docs/MemKV-Field-Manual.html) for the full build guide, the bugs
-found and fixed along the way, and 70+ interview questions with model answers.
+with C/C++*, then rebuilt it from scratch in C++.
